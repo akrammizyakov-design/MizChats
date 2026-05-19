@@ -1,6 +1,6 @@
 {
-  "name": "Наша Семья",
-  "short_name": "Семья",
+  "name": "MizChats",
+  "short_name": "MizChats",
   "description": "Семейный чат для всех членов семьи",
   "start_url": "/",
   "display": "standalone",
