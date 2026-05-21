@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>MizyakApp 💬</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#1a73e8" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="MizyakApp" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getDatabase, ref, push, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+    const firebaseConfig = {
+      apiKey: "AIzaSyB4LSVJndP3IL7tQkePCkGACmmojqEvfrM",
+      authDomain: "mizyakovchats.firebaseapp.com",
+      databaseURL: "https://mizyakovchats-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "mizyakovchats",
+      storageBucket: "mizyakovchats.firebasestorage.app",
+      messagingSenderId: "1050701695700",
+      appId: "1:1050701695700:web:f1e813c37bf69bebd34941"
+    };
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    window._db = db; window._ref = ref; window._push = push;
+    window._onValue = onValue; window._update = update;
+    window._firebaseReady = true;
+    document.dispatchEvent(new Event("firebase-ready"));
+  </script>
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; overflow: hidden; font-family: 'Inter', sans-serif; }
+    body { background: #f0f4ff; display: flex; flex-direction: column; }
+
+    .screen { display: none; flex-direction: column; height: 100%; }
+    .screen.active { display: flex; }
+
+    /* ── PASSWORD ── */
+    #pwd-screen { align-items: center; justify-content: center; padding: 24px;
+      background: linear-gradient(160deg, #1a73e8 0%, #0d47a1 100%); }
+    .auth-card { background: #fff; border-radius: 24px; padding: 40px 28px;
+      text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.2); width: 100%; max-width: 380px; }
+    .auth-icon { font-size: 60px; margin-bottom: 12px; }
+    .auth-card h1 { font-size: 28px; font-weight: 800; color: #1a1a2e; margin-bottom: 6px; }
+    .auth-card p { color: #888; font-size: 14px; margin-bottom: 28px; }
+    .dots { display: flex; justify-content: center; gap: 8px; margin-bottom: 20px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: #e0e7ff; transition: background .2s; }
+    .dot.filled { background: #1a73e8; }
+    #pwd-input { width: 100%; border: 2px solid #e0e7ff; border-radius: 14px;
+      padding: 13px 18px; font-size: 18px; text-align: center; outline: none;
+      font-family: inherit; background: #f8faff; letter-spacing: 4px; margin-bottom: 14px; }
+    #pwd-input:focus { border-color: #1a73e8; }
+    #pwd-btn { width: 100%; background: linear-gradient(135deg,#1a73e8,#0d47a1); color: #fff;
+      border: none; border-radius: 14px; padding: 14px; font-size: 16px;
+      font-weight: 700; cursor: pointer; font-family: inherit; }
+    #pwd-error { color: #e53935; font-size: 13px; font-weight: 600; margin-top: 10px; min-height: 18px; }
+
+    /* ── LOGIN ── */
+    #login-screen { align-items: center; justify-content: center; padding: 24px;
+      background: linear-gradient(160deg,#1a73e8,#0d47a1); }
+    .member-grid { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+    .member-btn { display: flex; flex-direction: column; align-items: center; gap: 8px;
+      padding: 18px 16px; border-radius: 20px; border: 2.5px solid; background: #fff;
+      cursor: pointer; min-width: 90px; font-family: inherit; transition: transform .15s; }
+    .member-btn:active { transform: scale(0.95); }
+    .member-btn .em { font-size: 36px; }
+    .member-btn .nm { font-size: 13px; font-weight: 700; }
+
+    /* ── CHAT LIST ── */
+    #list-screen { background: #f0f4ff; }
+    .list-header { display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 16px 14px;
+      background: linear-gradient(135deg,#1a73e8,#0d47a1);
+      flex-shrink: 0; }
+    .list-header .app-name { font-size: 22px; font-weight: 800; color: #fff; }
+    .header-btns { display: flex; gap: 6px; align-items: center; }
+    .me-badge { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.2);
+      border-radius: 20px; padding: 5px 12px 5px 8px; }
+    .me-badge .me-emoji { font-size: 22px; }
+    .me-badge .me-name { font-size: 13px; font-weight: 700; color: #fff; }
+    .icon-btn { background: rgba(255,255,255,0.2); border: none; font-size: 18px;
+      cursor: pointer; padding: 8px; border-radius: 10px; color: #fff; }
+
+    #chat-list { flex: 1; overflow-y: auto; padding: 12px 12px 20px; display: flex; flex-direction: column; gap: 8px; }
+    .section-label { font-size: 11px; font-weight: 700; color: #1a73e8;
+      padding: 4px 4px 2px; letter-spacing: 1px; text-transform: uppercase; }
+    .chat-item { display: flex; align-items: center; gap: 14px; padding: 14px 16px;
+      background: #fff; border-radius: 18px; cursor: pointer;
+      transition: transform .1s; box-shadow: 0 2px 12px rgba(26,115,232,0.08); }
+    .chat-item:active { transform: scale(0.98); }
+    .chat-avatar { font-size: 40px; flex-shrink: 0; }
+    .chat-info { flex: 1; min-width: 0; }
+    .chat-name { font-size: 16px; font-weight: 700; color: #1a1a2e; }
+    .chat-preview { font-size: 13px; color: #888; margin-top: 2px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .chat-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; flex-shrink: 0; }
+    .chat-time { font-size: 11px; color: #bbb; font-weight: 500; }
+    .chat-badge { background: #1a73e8; color: #fff; font-size: 11px; font-weight: 700;
+      border-radius: 10px; padding: 2px 8px; min-width: 22px; text-align: center; }
+    .schedule-item { background: linear-gradient(135deg,#e8f0fe,#f0f4ff); border: 1.5px solid #c5d8fb; }
+
+    /* ── CHAT ROOM ── */
+    #chat-screen { background: #f0f4ff; }
+    .chat-header { display: flex; align-items: center; gap: 12px; padding: 12px 14px;
+      background: linear-gradient(135deg,#1a73e8,#0d47a1);
+      flex-shrink: 0; box-shadow: 0 2px 16px rgba(26,115,232,0.2); }
+    .back-btn { font-size: 26px; background: rgba(255,255,255,0.2); border: none;
+      cursor: pointer; padding: 6px 10px; color: #fff; font-weight: 700;
+      border-radius: 10px; line-height: 1; }
+    .chat-header-avatar { font-size: 34px; }
+    .chat-header-info { flex: 1; }
+    .chat-header-name { font-size: 17px; font-weight: 800; color: #fff; }
+    .chat-header-sub { font-size: 11px; color: rgba(255,255,255,0.7); margin-top: 1px; }
+
+    #messages { flex: 1; overflow-y: auto; padding: 12px 12px 4px;
+      display: flex; flex-direction: column; gap: 2px; -webkit-overflow-scrolling: touch; }
+    .date-div { display: flex; justify-content: center; margin: 10px 0 4px; }
+    .date-lbl { background: rgba(26,115,232,0.1); border-radius: 12px;
+      padding: 3px 14px; font-size: 11px; color: #1a73e8; font-weight: 600; }
+    .msg-row { display: flex; align-items: flex-end; gap: 6px; margin-bottom: 2px; }
+    .msg-row.me { flex-direction: row-reverse; }
+    .sender-em { font-size: 26px; flex-shrink: 0; margin-bottom: 4px; }
+    .msg-wrap { max-width: 72%; position: relative; }
+    .sender-nm { font-size: 11px; font-weight: 700; margin-bottom: 3px; margin-left: 4px; }
+    .me .sender-nm { display: none; }
+    .bubble { padding: 10px 14px 8px; border-radius: 18px; font-size: 15px;
+      line-height: 1.45; word-break: break-word; position: relative; }
+    .bubble .ts { font-size: 10px; margin-left: 8px; float: right; margin-top: 3px; opacity: 0.65; }
+    .reactions-row { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
+    .me .reactions-row { justify-content: flex-end; }
+    .reaction-chip { border-radius: 12px; padding: 2px 8px; font-size: 13px;
+      cursor: pointer; font-family: inherit; font-weight: 700; }
+    .picker { position: absolute; bottom: calc(100% + 6px); display: flex; gap: 4px;
+      background: #fff; border-radius: 16px; padding: 8px 10px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15); z-index: 20; animation: popIn .15s ease; }
+    .me .picker { right: 0; }
+    .picker-btn { background: none; border: none; font-size: 22px; cursor: pointer; padding: 2px 4px; border-radius: 8px; }
+    @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 14px; padding: 40px; text-align: center; }
+    .empty-state .big { font-size: 60px; }
+    .empty-state p { color: #aaa; font-size: 15px; font-weight: 600; }
+
+    #input-bar { display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+      background: #fff; border-top: 1px solid #e0e7ff; flex-shrink: 0;
+      padding-bottom: max(10px, env(safe-area-inset-bottom)); }
+    #my-emoji-bar { font-size: 26px; flex-shrink: 0; }
+    #msg-input { flex: 1; border: 2px solid #e0e7ff; border-radius: 24px;
+      padding: 10px 16px; font-size: 15px; outline: none;
+      font-family: inherit; background: #f8faff; color: #1a1a2e; }
+    #msg-input:focus { border-color: #1a73e8; }
+    #send-btn { width: 44px; height: 44px; border-radius: 50%; border: none;
+      background: linear-gradient(135deg,#1a73e8,#0d47a1);
+      color: #fff; font-size: 18px; cursor: pointer; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; transition: transform .1s; }
+    #send-btn:active { transform: scale(0.9); }
+
+    /* ── SCHEDULE SCREEN ── */
+    #schedule-screen { background: #f0f4ff; }
+    .schedule-header { display: flex; align-items: center; gap: 12px; padding: 12px 14px;
+      background: linear-gradient(135deg,#1a73e8,#0d47a1); flex-shrink: 0; }
+    .days-bar { display: flex; gap: 6px; padding: 12px 12px 8px;
+      overflow-x: auto; flex-shrink: 0; background: #fff;
+      border-bottom: 1px solid #e0e7ff; -webkit-overflow-scrolling: touch; }
+    .days-bar::-webkit-scrollbar { display: none; }
+    .day-btn { flex-shrink: 0; padding: 8px 16px; border-radius: 20px; border: none;
+      font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+      background: #e0e7ff; color: #1a73e8; transition: all .2s; }
+    .day-btn.active { background: linear-gradient(135deg,#1a73e8,#0d47a1); color: #fff; }
+    #lessons-list { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+    .lesson-card { background: #fff; border-radius: 16px; padding: 14px 16px;
+      box-shadow: 0 2px 12px rgba(26,115,232,0.08); border-left: 4px solid #1a73e8; }
+    .lesson-num { font-size: 11px; font-weight: 700; color: #1a73e8; margin-bottom: 4px; text-transform: uppercase; letter-spacing: .5px; }
+    .lesson-subject { font-size: 17px; font-weight: 800; color: #1a1a2e; margin-bottom: 6px; }
+    .lesson-time { font-size: 13px; color: #555; font-weight: 600; }
+    .lesson-room { font-size: 12px; color: #aaa; margin-top: 2px; }
+    .no-lessons { text-align: center; padding: 60px 20px; color: #aaa; font-size: 15px; font-weight: 600; }
+
+    /* ── AVATAR ── */
+    .avatar-wrap { position: relative; width: 72px; height: 72px; margin: 0 auto 16px; cursor: pointer; }
+    .avatar-img { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 3px solid #1a73e8; }
+    .avatar-emoji { width: 72px; height: 72px; border-radius: 50%; background: #e8f0fe; border: 3px solid #1a73e8; display: flex; align-items: center; justify-content: center; font-size: 36px; }
+    .avatar-edit-btn { position: absolute; bottom: 0; right: 0; background: #1a73e8; color: #fff; border: 2px solid #fff; border-radius: 50%; width: 24px; height: 24px; font-size: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+    .member-avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+    .member-avatar-sm { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; }
+    .chat-avatar-img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; }
+
+    /* ── SETTINGS MODAL ── */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200; align-items: flex-end; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal-box { background: #fff; border-radius: 24px 24px 0 0; padding: 28px 24px 40px;
+      width: 100%; max-width: 480px; animation: slideUp .25s ease; }
+    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    .modal-box h2 { font-size: 20px; font-weight: 800; margin-bottom: 4px; color: #1a1a2e; }
+    .modal-sub { color: #bbb; font-size: 13px; margin-bottom: 20px; }
+    .field-label { font-size: 12px; font-weight: 700; color: #1a73e8; margin-bottom: 6px; letter-spacing: .5px; }
+    .settings-input { width: 100%; border: 2px solid #e0e7ff; border-radius: 14px;
+      padding: 11px 14px; font-size: 16px; font-family: inherit; outline: none;
+      background: #f8faff; margin-bottom: 18px; }
+    .settings-input:focus { border-color: #1a73e8; }
+    .emoji-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 22px; }
+    .emoji-opt { font-size: 28px; background: #f0f4ff; border: 2px solid transparent;
+      border-radius: 12px; width: 48px; height: 48px; cursor: pointer; transition: transform .1s; }
+    .emoji-opt.selected { background: #e8f0fe; border-color: #1a73e8; }
+    .modal-btns { display: flex; gap: 10px; }
+    .btn-cancel { flex: 1; padding: 13px; border-radius: 14px; border: 2px solid #e0e7ff;
+      background: #fff; font-family: inherit; font-size: 15px; font-weight: 700; cursor: pointer; color: #888; }
+    .btn-save { flex: 1; padding: 13px; border-radius: 14px; border: none;
+      background: linear-gradient(135deg,#1a73e8,#0d47a1); color: #fff;
+      font-family: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+<!-- PASSWORD -->
+<div id="pwd-screen" class="screen active">
+  <div class="auth-card">
+    <div class="auth-icon">🔐</div>
+    <h1>MizyakApp</h1>
+    <p>Введи семейный пароль</p>
+    <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+    <input id="pwd-input" type="password" placeholder="••••••" maxlength="20" />
+    <button id="pwd-btn">Войти ➤</button>
+    <div id="pwd-error"></div>
+  </div>
+</div>
+
+<!-- LOGIN -->
+<div id="login-screen" class="screen">
+  <div class="auth-card">
+    <div class="auth-icon">👋</div>
+    <h1>Кто ты?</h1>
+    <p>Выбери своего персонажа</p>
+    <div class="member-grid" id="member-grid"></div>
+  </div>
+</div>
+
+<!-- CHAT LIST -->
+<div id="list-screen" class="screen">
+  <div class="list-header">
+    <div class="app-name">💬 MizyakApp</div>
+    <div class="header-btns">
+      <div class="me-badge">
+        <span class="me-emoji" id="list-my-emoji">👨</span>
+        <span class="me-name" id="list-my-name">Папа</span>
+      </div>
+      <button class="icon-btn" id="settings-btn">⚙️</button>
+      <button class="icon-btn" id="logout-btn">🔄</button>
+    </div>
+  </div>
+  <div id="chat-list"></div>
+</div>
+
+<!-- CHAT ROOM -->
+<div id="chat-screen" class="screen">
+  <div class="chat-header">
+    <button class="back-btn" id="back-btn">‹</button>
+    <span class="chat-header-avatar" id="chat-avatar">👨‍👩‍👧‍👦</span>
+    <div class="chat-header-info">
+      <div class="chat-header-name" id="chat-name">Семья</div>
+      <div class="chat-header-sub" id="chat-sub">общий чат</div>
+    </div>
+  </div>
+  <div id="messages"></div>
+  <div id="input-bar">
+    <span id="my-emoji-bar">👨</span>
+    <input id="msg-input" type="text" placeholder="Напиши..." />
+    <button id="send-btn">➤</button>
+  </div>
+</div>
+
+<!-- SCHEDULE SCREEN -->
+<div id="schedule-screen" class="screen">
+  <div class="schedule-header">
+    <button class="back-btn" id="sched-back-btn">‹</button>
+    <span style="font-size:28px;">📅</span>
+    <div class="chat-header-info">
+      <div class="chat-header-name">Расписание Ясина</div>
+      <div class="chat-header-sub">5 Г класс • 2024-2025</div>
+    </div>
+  </div>
+  <div class="days-bar" id="days-bar"></div>
+  <div id="lessons-list"></div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="settings-modal">
+  <div class="modal-box" style="overflow-y:auto;max-height:90vh;">
+    <h2>Мой профиль</h2>
+    <div class="modal-sub">Фото, имя и эмодзи</div>
+
+    <!-- Avatar -->
+    <div class="avatar-wrap" onclick="document.getElementById('avatar-input').click()">
+      <div id="settings-avatar-preview" class="avatar-emoji">👨</div>
+      <div class="avatar-edit-btn">📷</div>
+    </div>
+    <input type="file" id="avatar-input" accept="image/*" style="display:none" onchange="handleAvatarChange(event)" />
+    <div style="text-align:center;font-size:12px;color:#aaa;margin-bottom:16px;">Нажми на фото чтобы изменить</div>
+
+    <div class="field-label">ИМЯ</div>
+    <input class="settings-input" id="settings-name" type="text" maxlength="20" />
+    <div class="field-label">ЭМОДЗИ (если нет фото)</div>
+    <div class="emoji-grid" id="emoji-grid"></div>
+    <div class="modal-btns">
+      <button class="btn-cancel" id="settings-cancel">Отмена</button>
+      <button class="btn-save" id="settings-save">Сохранить ✓</button>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden file input for avatar -->
+<input type="file" id="avatar-input-hidden" accept="image/*" style="display:none" />
+
+<script>
+const FAMILY_PASSWORD = "семья2024";
+const EMOJI_OPTIONS = ["👨","👩","🧒","👦","👧","👴","👵","🧔","👱","🧑","🦸","🧙","🐻","🐱","🦊","🌟","🔥","💎","🎯","🤴"];
+const REACTIONS = ["❤️","😂","👍","🔥","😢","🎉"];
+const DAYS = ["Пн","Вт","Ср","Чт","Пт"];
+
+// ── РАСПИСАНИЕ ИСЕ ── (будет добавлено позже)
+const SCHEDULE_ISE = {
+  "Пн": [], "Вт": [], "Ср": [], "Чт": [], "Пт": []
+};
+
+// ── РАСПИСАНИЕ ЯСИНА ──
+const SCHEDULE = {
+  "Пн": [
+    { subject: "Классный час", time: "14:00 - 14:45", room: "каб. 6" },
+    { subject: "Математика", time: "14:50 - 15:35", room: "каб. 63" },
+    { subject: "Английский язык", time: "15:40 - 16:25", room: "каб. 69" },
+    { subject: "Естествознание", time: "16:35 - 17:20", room: "каб. 6" },
+    { subject: "Художественный труд", time: "17:25 - 18:10", room: "каб. 51" },
+    { subject: "Художественный труд", time: "18:15 - 19:00", room: "каб. 51" },
+    { subject: "История Казахстана", time: "19:05 - 19:50", room: "каб. 56" },
+  ],
+  "Вт": [
+    { subject: "Физическая культура", time: "14:00 - 14:45", room: "Спортзал" },
+    { subject: "Казахский язык и литература", time: "14:50 - 15:35", room: "каб. 75" },
+    { subject: "Математика", time: "15:40 - 16:25", room: "каб. 63" },
+    { subject: "Русский язык", time: "16:35 - 17:20", room: "каб. 72" },
+    { subject: "Русская литература", time: "17:25 - 18:10", room: "каб. 71" },
+  ],
+  "Ср": [
+    { subject: "Математика", time: "13:10 - 13:55", room: "каб. 63" },
+    { subject: "Казахский язык и литература", time: "14:00 - 14:45", room: "каб. 75" },
+    { subject: "Английский язык", time: "14:50 - 15:35", room: "каб. 69" },
+    { subject: "Информатика", time: "15:40 - 16:25", room: "каб. 78" },
+    { subject: "Физическая культура", time: "16:35 - 17:20", room: "Спортзал" },
+    { subject: "Всемирная история", time: "17:25 - 18:10", room: "каб. 50" },
+    { subject: "История Казахстана", time: "18:15 - 19:00", room: "каб. 50" },
+  ],
+  "Чт": [
+    { subject: "Русская литература", time: "14:00 - 14:45", room: "каб. 72" },
+    { subject: "Русский язык", time: "14:50 - 15:35", room: "каб. 72" },
+    { subject: "Английский язык", time: "15:40 - 16:25", room: "каб. 69" },
+    { subject: "Физическая культура", time: "16:35 - 17:20", room: "Спортзал" },
+    { subject: "Казахский язык и литература", time: "17:25 - 18:10", room: "каб. 73" },
+    { subject: "Математика", time: "18:15 - 19:00", room: "каб. 63" },
+  ],
+  "Пт": [
+    { subject: "Русский язык", time: "13:10 - 13:55", room: "каб. 32" },
+    { subject: "Естествознание", time: "14:00 - 14:45", room: "каб. 6" },
+    { subject: "Математика", time: "14:50 - 15:35", room: "каб. 63" },
+    { subject: "Казахский язык и литература", time: "15:40 - 16:25", room: "каб. 73" },
+    { subject: "Музыка", time: "16:35 - 17:20", room: "каб. 52" },
+  ],
+};
+
+let MEMBERS = [
+  { id:"papa",   name:"Папа",      emoji:"👨", color:"#1a73e8" },
+  { id:"mama",   name:"Мама",      emoji:"👩", color:"#e91e8c" },
+  { id:"child1", name:"Ребёнок 1", emoji:"🧒", color:"#f57c00" },
+  { id:"child2", name:"Ребёнок 2", emoji:"👦", color:"#2e7d32" },
+  { id:"child3", name:"Ребёнок 3", emoji:"👧", color:"#7b1fa2" },
+];
+
+let currentUser = null;
+let currentChatId = null;
+let unsubscribe = null;
+let allMessages = {};
+let reactionPicker = null;
+let lastMessages = {};
+let unreadCounts = {};
+let selectedDay = null;
+
+function show(id) {
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+function getMember(id) { return MEMBERS.find(m=>m.id===id)||{name:"?",emoji:"👤",color:"#aaa"}; }
+function formatTime(ts) { return new Date(ts).toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"}); }
+function formatDate(ts) {
+  const d=new Date(ts),today=new Date(),yest=new Date();
+  yest.setDate(yest.getDate()-1);
+  if(d.toDateString()===today.toDateString()) return "Сегодня";
+  if(d.toDateString()===yest.toDateString()) return "Вчера";
+  return d.toLocaleDateString("ru-RU",{day:"numeric",month:"long"});
+}
+function chatIdForDM(a,b) { return [a,b].sort().join("_"); }
+function escHtml(s) { return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+function loadSavedNames() {
+  const saved=localStorage.getItem("miz_names");
+  if(saved) { JSON.parse(saved).forEach(s=>{ const m=MEMBERS.find(x=>x.id===s.id); if(m){m.name=s.name;m.emoji=s.emoji;} }); }
+}
+// ── Avatars ──
+let avatars = {}; // memberId -> base64 string
+let newAvatarBase64 = null;
+
+function loadAvatars() {
+  if(!window._firebaseReady){ document.addEventListener("firebase-ready",loadAvatars,{once:true}); return; }
+  window._onValue(window._ref(window._db,"avatars"), snap=>{
+    avatars = snap.val() || {};
+    refreshAllAvatars();
+  });
+}
+
+function refreshAllAvatars() {
+  // Update list header
+  if(currentUser) updateMyAvatarUI();
+  renderChatList();
+}
+
+function updateMyAvatarUI() {
+  const av = avatars[currentUser.id];
+  const badge = document.getElementById("list-my-emoji");
+  if(av) {
+    badge.innerHTML = `<img src="${av}" class="member-avatar-sm" />`;
+  } else {
+    badge.textContent = currentUser.emoji;
+  }
+}
+
+function getMemberAvatar(id, size=28) {
+  const av = avatars[id];
+  const m = getMember(id);
+  if(av) return `<img src="${av}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;flex-shrink:0;" />`;
+  return `<span style="font-size:${size*0.7}px">${m.emoji}</span>`;
+}
+
+function handleAvatarChange(e) {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    // Compress image
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const MAX = 200;
+      let w = img.width, h = img.height;
+      if(w > h) { if(w>MAX){h=h*MAX/w;w=MAX;} } else { if(h>MAX){w=w*MAX/h;h=MAX;} }
+      canvas.width=w; canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      newAvatarBase64 = canvas.toDataURL('image/jpeg', 0.7);
+      // Show preview
+      const preview = document.getElementById("settings-avatar-preview");
+      preview.innerHTML = `<img src="${newAvatarBase64}" style="width:72px;height:72px;border-radius:50%;object-fit:cover;" />`;
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function saveAvatar() {
+  if(!newAvatarBase64 || !window._firebaseReady) return;
+  const updates = {};
+  updates[`avatars/${currentUser.id}`] = newAvatarBase64;
+  await window._update(window._ref(window._db), updates);
+  newAvatarBase64 = null;
+}
+
+function saveNames() {
+  localStorage.setItem("miz_names",JSON.stringify(MEMBERS.map(m=>({id:m.id,name:m.name,emoji:m.emoji}))));
+}
+
+// ── Password ──
+document.getElementById("pwd-btn").onclick=checkPassword;
+document.getElementById("pwd-input").onkeydown=e=>{if(e.key==="Enter")checkPassword();};
+document.getElementById("pwd-input").oninput=()=>{
+  const len=Math.min(document.getElementById("pwd-input").value.length,4);
+  document.querySelectorAll(".dot").forEach((d,i)=>d.classList.toggle("filled",i<len));
+};
+function checkPassword(){
+  const val=document.getElementById("pwd-input").value.trim();
+  const err=document.getElementById("pwd-error");
+  if(val===FAMILY_PASSWORD){
+    sessionStorage.setItem("miz_auth","1");
+    document.getElementById("pwd-input").value="";
+    document.querySelectorAll(".dot").forEach(d=>d.classList.remove("filled"));
+    loadSavedNames();
+    const saved=localStorage.getItem("miz_user");
+    if(saved){const m=MEMBERS.find(x=>x.id===saved);if(m){loginAs(m);return;}}
+    renderLoginScreen(); show("login-screen");
+  } else {
+    err.textContent="Неверный пароль 🙈";
+    document.getElementById("pwd-input").value="";
+    document.getElementById("pwd-input").style.borderColor="#e53935";
+    setTimeout(()=>{document.getElementById("pwd-input").style.borderColor="#e0e7ff";err.textContent="";},2000);
+  }
+}
+
+// ── Login ──
+function renderLoginScreen(){
+  const grid=document.getElementById("member-grid");
+  grid.innerHTML="";
+  MEMBERS.forEach(m=>{
+    const btn=document.createElement("button");
+    btn.className="member-btn";
+    btn.style.borderColor=m.color;
+    btn.innerHTML=`<span class="em">${m.emoji}</span><span class="nm" style="color:${m.color}">${m.name}</span>`;
+    btn.onclick=()=>loginAs(m);
+    grid.appendChild(btn);
+  });
+}
+function loginAs(member){
+  currentUser=MEMBERS.find(m=>m.id===member.id);
+  localStorage.setItem("miz_user",currentUser.id);
+  document.getElementById("list-my-emoji").textContent=currentUser.emoji;
+  document.getElementById("list-my-name").textContent=currentUser.name;
+  document.getElementById("my-emoji-bar").textContent=currentUser.emoji;
+  document.getElementById("send-btn").style.background=`linear-gradient(135deg,${currentUser.color},${currentUser.color}cc)`;
+  subscribeLastMessages();
+  loadAvatars();
+  show("list-screen");
+}
+
+document.getElementById("logout-btn").onclick=()=>{
+  if(unsubscribe){unsubscribe();unsubscribe=null;}
+  currentUser=null;currentChatId=null;
+  localStorage.removeItem("miz_user");
+  document.getElementById("pwd-input").value="";
+  document.querySelectorAll(".dot").forEach(d=>d.classList.remove("filled"));
+  show("pwd-screen");
+};
+
+// ── Chat List ──
+function subscribeLastMessages(){
+  if(!window._firebaseReady){document.addEventListener("firebase-ready",subscribeLastMessages,{once:true});return;}
+  window._onValue(window._ref(window._db,"chats"),snap=>{
+    lastMessages={};unreadCounts={};
+    const data=snap.val()||{};
+    Object.entries(data).forEach(([chatId,msgs])=>{
+      const arr=Object.entries(msgs).map(([k,v])=>({key:k,...v})).sort((a,b)=>a.ts-b.ts);
+      if(arr.length>0) lastMessages[chatId]=arr[arr.length-1];
+      const lastSeen=parseInt(localStorage.getItem("seen_"+chatId+"_"+currentUser.id)||"0");
+      unreadCounts[chatId]=arr.filter(m=>m.userId!==currentUser.id&&m.ts>lastSeen).length;
+    });
+    renderChatList();
+  });
+}
+
+function renderChatList(){
+  const el=document.getElementById("chat-list");
+  let html="";
+  const groupLast=lastMessages["group"];
+  const groupUnread=unreadCounts["group"]||0;
+  const groupPreview=groupLast?`${getMember(groupLast.userId).emoji} ${escHtml(groupLast.text)}`:"Напишите первое сообщение!";
+  html+=`<div class="section-label">ЧАТЫ</div>`;
+  html+=`<div class="chat-item" onclick="openChat('group')">
+    <div class="chat-avatar">👨‍👩‍👧‍👦</div>
+    <div class="chat-info">
+      <div class="chat-name">Вся семья</div>
+      <div class="chat-preview">${groupPreview}</div>
+    </div>
+    <div class="chat-meta">
+      <span class="chat-time">${groupLast?formatTime(groupLast.ts):""}</span>
+      ${groupUnread>0?`<span class="chat-badge">${groupUnread}</span>`:""}
+    </div>
+  </div>`;
+  const others=MEMBERS.filter(m=>m.id!==currentUser.id);
+  others.forEach(m=>{
+    const cid=chatIdForDM(currentUser.id,m.id);
+    const last=lastMessages[cid];
+    const unread=unreadCounts[cid]||0;
+    const preview=last?(last.userId===currentUser.id?`Ты: ${escHtml(last.text)}`:escHtml(last.text)):"Начни общение...";
+    html+=`<div class="chat-item" onclick="openChat('${cid}','${m.id}')">
+      <div class="chat-avatar">${m.emoji}</div>
+      <div class="chat-info">
+        <div class="chat-name">${m.name}</div>
+        <div class="chat-preview">${preview}</div>
+      </div>
+      <div class="chat-meta">
+        <span class="chat-time">${last?formatTime(last.ts):""}</span>
+        ${unread>0?`<span class="chat-badge">${unread}</span>`:""}
+      </div>
+    </div>`;
+  });
+  html+=`<div class="section-label" style="margin-top:8px;">РАСПИСАНИЕ</div>`;
+  html+=`<div class="chat-item schedule-item" onclick="openSchedule('yasin')">
+    <div class="chat-avatar">📅</div>
+    <div class="chat-info">
+      <div class="chat-name">Расписание Ясина</div>
+      <div class="chat-preview">5 Г класс • нажми чтобы посмотреть</div>
+    </div>
+    <div class="chat-meta"><span style="font-size:20px;">›</span></div>
+  </div>`;
+  html+=`<div class="chat-item schedule-item" onclick="openSchedule('ise')">
+    <div class="chat-avatar">📅</div>
+    <div class="chat-info">
+      <div class="chat-name">Расписание Исе</div>
+      <div class="chat-preview">Расписание будет добавлено скоро</div>
+    </div>
+    <div class="chat-meta"><span style="font-size:20px;">›</span></div>
+  </div>`;
+  el.innerHTML=html;
+}
+
+// ── Open Chat ──
+function openChat(chatId,partnerId){
+  currentChatId=chatId;reactionPicker=null;
+  localStorage.setItem("seen_"+chatId+"_"+currentUser.id,Date.now().toString());
+  if(chatId==="group"){
+    document.getElementById("chat-avatar").textContent="👨‍👩‍👧‍👦";
+    document.getElementById("chat-name").textContent="Вся семья";
+    document.getElementById("chat-sub").textContent="общий чат • "+MEMBERS.length+" участников";
+  } else {
+    const p=getMember(partnerId);
+    document.getElementById("chat-avatar").textContent=p.emoji;
+    document.getElementById("chat-name").textContent=p.name;
+    document.getElementById("chat-sub").textContent="личный чат";
+  }
+  document.getElementById("my-emoji-bar").textContent=currentUser.emoji;
+  show("chat-screen");
+  subscribeChat(chatId);
+}
+
+document.getElementById("back-btn").onclick=()=>{
+  if(unsubscribe){unsubscribe();unsubscribe=null;}
+  localStorage.setItem("seen_"+currentChatId+"_"+currentUser.id,Date.now().toString());
+  currentChatId=null;show("list-screen");
+};
+
+function subscribeChat(chatId){
+  if(unsubscribe){unsubscribe();unsubscribe=null;}
+  if(!window._firebaseReady){document.addEventListener("firebase-ready",()=>subscribeChat(chatId),{once:true});return;}
+  const off=window._onValue(window._ref(window._db,"chats/"+chatId),snap=>{
+    allMessages=snap.val()||{};renderMessages();
+  });
+  unsubscribe=()=>off();
+}
+
+function renderMessages(){
+  const container=document.getElementById("messages");
+  const msgs=Object.entries(allMessages).map(([k,v])=>({key:k,...v})).sort((a,b)=>a.ts-b.ts);
+  if(msgs.length===0){
+    container.innerHTML=`<div class="empty-state"><div class="big">💬</div><p>Напиши первое сообщение!</p></div>`;
+    return;
+  }
+  let html="",lastDate=null;
+  msgs.forEach(msg=>{
+    const d=formatDate(msg.ts);
+    if(d!==lastDate){html+=`<div class="date-div"><span class="date-lbl">${d}</span></div>`;lastDate=d;}
+    const sender=getMember(msg.userId);
+    const isMe=msg.userId===currentUser.id;
+    const bubbleStyle=isMe
+      ?`background:${currentUser.color};color:#fff;border-bottom-right-radius:4px`
+      :`background:#fff;color:#1a1a2e;border-bottom-left-radius:4px;box-shadow:0 2px 8px #0000001a`;
+    let reactHtml="";
+    if(msg.reactions){
+      reactHtml=Object.entries(msg.reactions).map(([emoji,users])=>{
+        const count=Object.keys(users).length;
+        const mine=users[currentUser.id];
+        const style=mine?`background:#e8f0fe;border:1.5px solid #1a73e8`:`background:#f5f5f5;border:1.5px solid #e0e0e0`;
+        return `<button class="reaction-chip" style="${style}" onclick="toggleReaction('${msg.key}','${emoji}')">${emoji} ${count}</button>`;
+      }).join("");
+    }
+    html+=`<div class="msg-row ${isMe?"me":""}" id="msg-${msg.key}">
+      ${!isMe?`<div style="flex-shrink:0;margin-bottom:4px;">${getMemberAvatar(msg.userId,28)}</div>`:""}
+      <div class="msg-wrap">
+        ${!isMe&&currentChatId==="group"?`<div class="sender-nm" style="color:${sender.color}">${sender.name}</div>`:""}
+        <div class="bubble" style="${bubbleStyle}" ondblclick="showPicker('${msg.key}',event)">
+          ${escHtml(msg.text)}<span class="ts">${formatTime(msg.ts)}${isMe?` <span style="opacity:0.8">${getReadStatus(msg)}</span>`:""}</span>
+        </div>
+        ${reactHtml?`<div class="reactions-row">${reactHtml}</div>`:""}
+        ${reactionPicker===msg.key?renderPicker(msg.key,isMe):""}
+      </div>
+    </div>`;
+  });
+  const wasAtBottom=container.scrollHeight-container.scrollTop-container.clientHeight<80;
+  container.innerHTML=html;
+  if(wasAtBottom) container.scrollTop=container.scrollHeight;
+}
+
+function getReadStatus(msg) {
+  // Check if any other member has seen this chat after msg.ts
+  const others = MEMBERS.filter(m => m.id !== currentUser.id);
+  const readByAny = others.some(m => {
+    const seen = parseInt(localStorage.getItem("seen_" + currentChatId + "_" + m.id) || "0");
+    return seen >= msg.ts;
+  });
+  return readByAny ? "✓✓" : "✓";
+}
+
+function renderPicker(key,isMe){
+  return `<div class="picker" style="${isMe?"right:0":"left:0"}">${REACTIONS.map(r=>`<button class="picker-btn" onclick="toggleReaction('${key}','${r}')">${r}</button>`).join("")}</div>`;
+}
+function showPicker(key,e){e.stopPropagation();reactionPicker=reactionPicker===key?null:key;renderMessages();}
+document.addEventListener("click",()=>{if(reactionPicker){reactionPicker=null;renderMessages();}});
+
+async function sendMessage(){
+  const input=document.getElementById("msg-input");
+  const text=input.value.trim();
+  if(!text||!currentUser||!currentChatId||!window._firebaseReady) return;
+  input.value="";
+  await window._push(window._ref(window._db,"chats/"+currentChatId),{userId:currentUser.id,text,ts:Date.now(),reactions:{}});
+}
+document.getElementById("send-btn").onclick=sendMessage;
+document.getElementById("msg-input").onkeydown=e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage();}};
+
+async function toggleReaction(msgKey,emoji){
+  reactionPicker=null;
+  if(!window._firebaseReady||!currentUser||!currentChatId) return;
+  const path=`chats/${currentChatId}/${msgKey}/reactions/${emoji}/${currentUser.id}`;
+  const r=window._ref(window._db,path);
+  const snap=await new Promise(res=>window._onValue(r,res,{onlyOnce:true}));
+  const updates={};updates[path]=snap.exists()?null:true;
+  await window._update(window._ref(window._db),updates);
+}
+
+// ── Schedule ──
+let currentScheduleChild = 'yasin';
+
+function openSchedule(child){
+  currentScheduleChild = child || 'yasin';
+  const today=new Date().getDay();
+  const dayMap={1:"Пн",2:"Вт",3:"Ср",4:"Чт",5:"Пт"};
+  selectedDay=dayMap[today]||"Пн";
+  const name = currentScheduleChild === 'yasin' ? 'Ясина' : 'Исе';
+  document.querySelector('#schedule-screen .chat-header-name').textContent = `Расписание ${name}`;
+  document.querySelector('#schedule-screen .chat-header-sub').textContent = currentScheduleChild === 'yasin' ? '5 Г класс • 2024-2025' : 'Класс • 2024-2025';
+  renderDaysBar();
+  renderLessons();
+  show("schedule-screen");
+}
+
+document.getElementById("sched-back-btn").onclick=()=>show("list-screen");
+
+function renderDaysBar(){
+  const bar=document.getElementById("days-bar");
+  bar.innerHTML=DAYS.map(d=>`<button class="day-btn${d===selectedDay?" active":""}" onclick="selectDay('${d}')">${d}</button>`).join("");
+}
+
+function selectDay(day){
+  selectedDay=day;
+  renderDaysBar();
+  renderLessons();
+}
+
+function renderLessons(){
+  const list=document.getElementById("lessons-list");
+  const sched = currentScheduleChild === 'yasin' ? SCHEDULE : SCHEDULE_ISE;
+  const lessons=sched[selectedDay]||[];
+  if(lessons.length===0){
+    const msg = currentScheduleChild === 'ise' ? '📝 Расписание Исе будет добавлено скоро' : '🎉 Нет уроков!';
+    list.innerHTML=`<div class="no-lessons">${msg}</div>`;
+    return;
+  }
+  list.innerHTML=lessons.map((l,i)=>`
+    <div class="lesson-card">
+      <div class="lesson-num">Урок ${i+1}</div>
+      <div class="lesson-subject">${l.subject}</div>
+      <div class="lesson-time">🕐 ${l.time}</div>
+      <div class="lesson-room">📍 ${l.room}</div>
+    </div>
+  `).join("");
+}
+
+// ── Settings ──
+let settingsEmoji=null;
+document.getElementById("settings-btn").onclick=openSettings;
+document.getElementById("settings-cancel").onclick=()=>document.getElementById("settings-modal").classList.remove("open");
+document.getElementById("settings-modal").onclick=e=>{if(e.target===document.getElementById("settings-modal"))document.getElementById("settings-modal").classList.remove("open");};
+document.getElementById("settings-save").onclick=saveSettings;
+
+function openSettings(){
+  settingsEmoji=currentUser.emoji;
+  newAvatarBase64=null;
+  document.getElementById("settings-name").value=currentUser.name;
+  // Show current avatar
+  const preview = document.getElementById("settings-avatar-preview");
+  const av = avatars[currentUser.id];
+  if(av) {
+    preview.innerHTML=`<img src="${av}" style="width:72px;height:72px;border-radius:50%;object-fit:cover;" />`;
+  } else {
+    preview.className="avatar-emoji";
+    preview.textContent=currentUser.emoji;
+  }
+  document.getElementById("emoji-grid").innerHTML=EMOJI_OPTIONS.map(e=>`<button class="emoji-opt${e===settingsEmoji?" selected":""}" onclick="selectEmoji('${e}')">${e}</button>`).join("");
+  document.getElementById("settings-modal").classList.add("open");
+}
+function selectEmoji(e){
+  settingsEmoji=e;
+  document.querySelectorAll(".emoji-opt").forEach(b=>b.classList.toggle("selected",b.textContent===e));
+}
+function saveSettings(){
+  const name=document.getElementById("settings-name").value.trim();
+  if(!name) return;
+  const m=MEMBERS.find(x=>x.id===currentUser.id);
+  if(m){m.name=name;m.emoji=settingsEmoji||currentUser.emoji;}
+  currentUser={...currentUser,name,emoji:settingsEmoji||currentUser.emoji};
+  saveNames();
+  saveAvatar(); // save avatar to Firebase
+  updateMyAvatarUI();
+  document.getElementById("list-my-name").textContent=currentUser.name;
+  document.getElementById("my-emoji-bar").textContent=currentUser.emoji;
+  document.getElementById("settings-modal").classList.remove("open");
+  renderChatList();
+}
+
+// ── Boot ──
+loadSavedNames();
+if(sessionStorage.getItem("miz_auth")==="1"){
+  const saved=localStorage.getItem("miz_user");
+  if(saved){const m=MEMBERS.find(x=>x.id===saved);if(m){loginAs(m);}else{renderLoginScreen();show("login-screen");}}
+  else{renderLoginScreen();show("login-screen");}
+}
+
+if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script>
+</body>
+</html>
